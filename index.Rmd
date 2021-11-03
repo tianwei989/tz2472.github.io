@@ -19,9 +19,9 @@ I can make an extra page on my site and link to that. Here is my
 [about](about.html)page
 
 
-## Here is td
+## Here is me
 
-my cat is Ted, he would like to be on the internet
+I would like to be on the internet
 <img src="picture/B9DB4E5C-2DAB-4698-958A-A2D5E23F36D8的副本.JPG" style="width:75%">
 
 #![](picture/B9DB4E5C-2DAB-4698-958A-A2D5E23F36D8的副本.JPG)
