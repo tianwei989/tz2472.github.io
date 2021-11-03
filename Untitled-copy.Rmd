@@ -1,0 +1,180 @@
+---
+title: "Untitled"
+author: '123'
+date: "10/27/2021"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+library(readxl)
+library(ggplot2)
+library(gridExtra)
+library(grid)
+library(lattice)
+```
+
+## Problem 1 – Data.
+Import and clean the data. Format the data to use appropriate variable names; fill in missing values with data where appropriate (as indicated in the header information); create character and ordered factors for categorical variables.
+
+```{r}
+data <- read_excel("p8105_mtp_data.xlsx", range ="A9:I1230") %>%
+  janitor::clean_names() %>%
+  replace_na(list(eop_size_mm = 0)) %>% # eop_size_mm can replace NA into 0 by the header
+  mutate(
+    age_group = factor(age_group,
+                         levels = c("1","2","3","4","5","6","7","8"),
+                         labels = c("0-18","18-30", "31-40","41-50","51-60","60+","60+","60+")),
+    eop_size = factor(eop_size,
+                         levels = c("0","1","2","3","4","5"),
+                         labels = c("0-5 mm", "5-10 mm",
+                                    "10-15 mm","15-20mm",
+                                    "20-25 mm","25+ mm")),
+    sex = factor(sex,
+                         levels = c(1, 0),
+                         labels = c("male", "female")),
+    eop_visibility_classification = factor(eop_visibility_classification,
+                         levels = c(0,1,2),
+                         labels = c("0 mm", "0 - 5mm",
+                                    ">= 5 mm")),
+    eop_shape = factor(eop_shape),
+    fhp_category = factor(fhp_category,
+                         levels = c("0","1","2","3","4","5","6","7"),
+                         labels = c("0-10mm", "10-20mm","20-30mm",
+                                    "30-40mm","40-50mm","50-60mm",
+                                    "60-70mm","70-80mm"))
+  )
+```
+
+Briefly describe the data cleaning process and the resulting dataset, identifying key variables based on your understanding of the original scientific report. 
+
+Read in data, clean the name, then replace NA with 0 in column eop_size_mm, then format the categorical variables into factor by the header indicates.
+
+
+How many participants are included? What is the age and gender distribution (a human-readable table may help here)?
+
+```{r}
+glimpse(data)
+```
+
+1221 participants.
+
+```{r}
+knitr::kable(table(data$age_group, data$sex),caption = "2 way table of age and gender")
+```
+
+Note (but don’t correct) issues in the available data – in particular, whether categorical variables in the dataset correctly implement the definitions based on underlying continuous variables. Use tables, figures, or specific examples (i.e. data for particular subjects) as needed to illustrate these issues.
+
+```{r}
+ggplot(data, aes(x = fhp_category, y = fhp_size_mm, color = fhp_size_mm)) + 
+  geom_point() + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+```{r}
+ggplot(data, aes(x = eop_size, y = eop_size_mm, color = eop_size_mm)) + 
+  geom_point() + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+Problem 2 – Visualization.
+In the original scientific report, Figures 3 and 4 show data or derived quantities. Both are flawed. Figure 3 shows only the mean and standard deviation for FHP, but does not show the distribution of the underlying data. 
+
+```{r}
+p1 = 
+  data %>%
+  ggplot( aes(x = age_group, y = fhp_size_mm)) +
+  geom_violin(aes(fill = age_group), alpha = .5) + 
+  stat_summary(fun = "median")
+```
+
+Figure 4 shows the number of participants in each age and sex group who have an enlarged EOP (based on categorical EOP Size – groups 0 and 1 vs groups 2, 3, 4, and 5). However, the number of participants in each age and sex group was controlled by the researchers, so the number with enlarged EOP in each group is not as informative as the rate of enlarged EOP in each group. Create a two-panel figure that contains improved versions of both of these.
+
+```{r}
+p2 = data %>% 
+  mutate(EOPS = (eop_size != "0-5 mm")) %>%
+  group_by(age_group,sex) %>%
+  summarise(rate = mean(EOPS, na.rm = TRUE)) %>%
+  ggplot( aes(x=age_group, y=rate, shape = sex,group = sex, color = sex)) +
+    geom_line() +
+    geom_point()
+
+grid.arrange(p1,p2,nrow = 2)
+```
+
+Although the authors are interested in how FHP size, age, and sex affect EOP size, no figure contains each of these. Create a 2 x 5 collection of panels, which show the association between FHP size and EOP size in each age and sex group.
+
+```{r}
+data %>%
+  filter(age_group != "0-18") %>%
+  ggplot(aes(x = fhp_size_mm, y = eop_size_mm)) +
+  geom_point() + facet_grid(sex~age_group)
+```
+
+
+Comment on your plots with respect to the scientific question of interest.
+
+自己写吧
+
+
+Problem 3 – Reproducing reported results.
+Are the authors’ stated sample sizes in each age group consistent with the data you have available?
+
+```{r}
+table(data$age_group)
+```
+
+Paper: 18–30 n=300, 31–40 n=200, 41–50 n=200, 51–60 n=200 and >60 n=300.
+
+Are the reported mean and standard deviations for FHP size consistent with the data you have available?
+
+我不知道paper里面这个数据在哪里。
+
+```{r}
+data %>% 
+  group_by(age_group,sex) %>%
+  summarise(mean = mean(fhp_size_mm, na.rm = TRUE),
+            sd = sd(fhp_size_mm, na.rm = TRUE)) 
+```
+
+
+The authors find “the prevalence of EEOP to be 33% of the study population”. What is the definition of EEOP, and what variables can you use to evaluate this claim? Is the finding consistent with the data available to you?
+
+enlarged external occipital protuberance (EEOP) only when they have exceeded 10mm in size
+
+Use "eop_size" variable.
+
+```{r}
+mean(!(data$eop_size %in% c("0-5 mm", "5-10 mm")),
+     na.rm = TRUE)
+```
+
+consistent
+
+
+FHP is noted to be more common in older subjects, with “FHP >40 mm observed frequently (34.5%) in the over 60s cases”. Are the broad trends and specific values consistent with your data?
+
+```{r}
+data %>% 
+  mutate(FHPS = (fhp_size_mm > 40)) %>%
+  group_by(age_group) %>%
+  summarise(rate = mean(FHPS, na.rm = TRUE)) %>%
+  ggplot( aes(x=age_group, y=rate, group = 1)) +
+    geom_line() +
+    geom_point()
+```
+
+```{r}
+data %>% 
+  mutate(FHPS = (fhp_size_mm > 40)) %>%
+  group_by(age_group) %>%
+  summarise(rate = mean(FHPS, na.rm = TRUE))
+```
+
+broad trend is the same. Data is 32.5% not 34.5%.
+
+Problem 4 – Discussion.
+Summarize your results, the quality of the data analysis / presentation of results in the original report, and comment on the conclusions of the reports’ authors. Do you think the data provide evidence that cell phones are causing horn growth? What other data would you like to have to address this hypothesis?
+
+
+
